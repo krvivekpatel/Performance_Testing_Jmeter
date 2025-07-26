@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
   <hashTree>
-    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="API Performance Test" enabled="true">
-      <stringProp name="TestPlan.comments">Performance test with 10 threads, 10 loops</stringProp>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="API Performance Test with Setup" enabled="true">
+      <stringProp name="TestPlan.comments">Performance test with Setup Thread Group, 10 threads, 10 loops</stringProp>
       <boolProp name="TestPlan.functional_mode">false</boolProp>
       <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
       <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" enabled="true">
@@ -16,21 +16,43 @@
         <stringProp name="driver">com.mysql.cj.jdbc.Driver</stringProp>
         <stringProp name="username">your_username</stringProp>
         <stringProp name="password">your_password</stringProp>
-        <stringProp name="poolMax">10</stringProp>
+        <stringProp name="poolMax">1</stringProp>
         <stringProp name="timeout">10000</stringProp>
         <stringProp name="connectionAge">0</stringProp>
         <stringProp name="validationQuery">SELECT 1</stringProp>
         <boolProp name="autoCommit">true</boolProp>
       </JDBCDataSource>
       <hashTree/>
-      <JDBCSampler guiclass="JDBCSamplerGui" testclass="JDBCSampler" testname="Fetch Account Numbers" enabled="true">
-        <stringProp name="dataSource">myDBPool</stringProp>
-        <stringProp name="queryType">Select Statement</stringProp>
-        <stringProp name="query">SELECT account_no FROM accounts LIMIT 100</stringProp>
-        <stringProp name="variableNames">account_no</stringProp>
-        <stringProp name="resultVariable">db_results</stringProp>
-      </JDBCSampler>
-      <hashTree/>
+      <SetupThreadGroup guiclass="SetupThreadGroupGui" testclass="SetupThreadGroup" testname="Setup Thread Group" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <stringProp name="LoopController.loops">1</stringProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">1</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">1</stringProp>
+        <boolProp name="ThreadGroup.scheduler">false</boolProp>
+        <stringProp name="ThreadGroup.duration"></stringProp>
+        <stringProp name="ThreadGroup.delay"></stringProp>
+      </SetupThreadGroup>
+      <hashTree>
+        <JDBCSampler guiclass="JDBCSamplerGui" testclass="JDBCSampler" testname="Fetch Account Numbers" enabled="true">
+          <stringProp name="dataSource">myDBPool</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">SELECT account_no FROM accounts LIMIT 100</stringProp>
+          <stringProp name="variableNames">account_no</stringProp>
+          <stringProp name="resultVariable">db_results</stringProp>
+        </JDBCSampler>
+        <hashTree>
+          <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="Store DB Results" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="script">def results = vars.getObject("db_results")
+def accountNos = results.collect { it.get("account_no") }
+props.put("account_numbers", accountNos as String[])</stringProp>
+          </JSR223PostProcessor>
+          <hashTree/>
+        </hashTree>
+      </hashTree>
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="API Test Thread Group" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" enabled="true">
@@ -45,13 +67,13 @@
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
       </ThreadGroup>
       <hashTree>
-        <BeanShellPreProcessor guiclass="TestBeanGUI" testclass="BeanShellPreProcessor" testname="Assign Account Number" enabled="true">
-          <stringProp name="script">import java.util.List;
-List results = vars.getObject("db_results");
-int threadIndex = ctx.getThreadNum();
-int index = threadIndex % results.size();
-vars.put("current_account_no", results.get(index).get("account_no").toString());</stringProp>
-        </BeanShellPreProcessor>
+        <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="Assign Account Number" enabled="true">
+          <stringProp name="scriptLanguage">groovy</stringProp>
+          <stringProp name="script">def accountNos = props.get("account_numbers") as String[]
+def threadIndex = ctx.getThreadNum()
+def index = threadIndex % accountNos.length
+vars.put("current_account_no", accountNos[index])</stringProp>
+        </JSR223PreProcessor>
         <hashTree/>
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="API 1 - Get Account Details" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true">
