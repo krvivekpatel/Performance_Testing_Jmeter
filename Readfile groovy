@@ -1,0 +1,46 @@
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.charset.StandardCharsets
+
+// Define CSV file path (use absolute path)
+def csvFile = "${System.getProperty('user.dir')}/output.csv"
+
+// Get result set
+def resultSet = vars.getObject("resultSet")
+
+// Use StringBuilder for efficient string concatenation
+def csvContent = new StringBuilder()
+csvContent.append("id,name,email\n") // Headers
+
+// Write up to 100 rows
+resultSet.take(100).each { row ->
+    csvContent.append("${row.get('id')},${row.get('name')},${row.get('email')}\n")
+}
+
+// Write to file in one operation
+Files.write(Paths.get(csvFile), csvContent.toString().getBytes(Standar
+dCharsets.UTF_8))
+
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.charset.StandardCharsets
+
+// Define CSV file path (use absolute path)
+def csvFile = "C:/jmeter/output.csv"
+
+// Get result set
+def resultSet = vars.getObject("resultSet")
+
+// Prepare CSV content
+def csvContent = new StringBuilder()
+csvContent.append("id,name,email\n") // Headers
+
+// Write up to 100 rows efficiently
+resultSet.eachWithIndex { row, index ->
+    if (index < 100) {
+        csvContent.append("${row.get('id')},${row.get('name')},${row.get('email')}\n")
+    }
+}
+
+// Write to file in one go (reduces I/O overhead)
+Files.write(Paths.get(csvFile), csvContent.toString().getBytes(StandardCharsets.UTF_8))
